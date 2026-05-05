@@ -29,7 +29,7 @@ Ensure you have a Python environment (3.10 or higher) with the following librari
 Clone this repository to your local machine:
 ```bash
 git clone [https://github.com/danyaalb/pipeline_code.git](https://github.com/danyaalb/pipeline_code.git)
-cd pipeline_code
+cd pipeline_code```
 
 ### Directory structure
 pipeline_code: Contains modeling, correction, and plotting logic.
@@ -41,7 +41,7 @@ pipeline_code/test_pipeline.py: Pytest suite for systematic error validation.
 ### How to run this code
 1. Clone repository to local machine
 2. Change inputs in pipeline_code/set_inputs.yaml
-3. Run in terminal ```pythono run_pipeline.py
+3. Run in terminal ```python run_pipeline.py```
 4. Check your outputs folder for corrected files and new H5 files (H5 files for the current pdf outputs not shown because it is proprietary data).
 
 ## For more information about assumptions for GP fitting and details about the code, read the GitHub Wiki.
