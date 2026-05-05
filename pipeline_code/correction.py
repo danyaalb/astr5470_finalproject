@@ -9,6 +9,33 @@ from scipy.optimize import minimize
 from scipy.ndimage import generic_filter
 
 def compute_gp_correction(time, flux, err, gp, mcmc_results, k_fast, k_slow):
+    '''
+    Compute the GP correction factor for a given time series and its associated uncertainties.
+
+    Inputs:
+    - time: 1D array of time points
+    - flux: 1D array of flux values (normalized)
+    - err: 1D array of flux uncertainties (also normalized)
+    - gp: george.GP object already fitted to the data
+    - mcmc_results: 2D array of MCMC samples (n_samples x n_params)
+    - k_fast: The "fast" kernel component
+    - k_slow: The "slow" kernel component
+
+    Outputs:
+    - A dictionary containing:
+        - "time_hr": Original time array
+        - "t_smooth": A smooth time grid for plotting (1000 points)
+        - "mu_fast": GP prediction for the fast component at original time points
+        - "mu_slow": GP prediction for the slow component at original time points
+        - "mu_total": Total GP prediction (fast + slow) at original time points
+        - "mu_fast_smooth": Fast component on the smooth grid
+        - "mu_slow_smooth": Slow component on the smooth grid
+        - "flux_factor": The multiplicative correction factor to apply to the flux
+        - "flux_raw": The original flux (normalized)
+        - "eureka_err": The original errors (normalized)
+        - "gp_err": The GP-derived empirical noise estimate (local std of residuals)
+        - "flux_corr": The GP-corrected flux (after applying the correction factor)
+    '''
     # Update GP to best-fit
     gp.set_parameter_vector(mcmc_results[1])
 
@@ -68,6 +95,21 @@ def run_binned_analysis(
 ):
     """
     Compute GP correction factors for each wavelength bin.
+
+    Inputs:
+    - time: 1D array of time points (in hours)
+    - flux_2d: 2D array of flux values (time x wavelength)
+    - err_2d: 2D array of flux uncertainties (time x wavelength)
+    - wavelengths: 1D array of wavelength values corresponding to the columns of flux_2d
+    - gp: george.GP object already fitted to the data
+    - mcmc_results: 2D array of MCMC samples (n_samples x n_params)
+    - k_fast: The "fast" kernel component
+    - k_slow: The "slow" kernel component
+    - wav_ranges: List of tuples defining wavelength bins, e.g., [(1.0, 1.2), (1.2, 1.4)]   
+
+    Outputs:
+    - A list of dictionaries, each containing the GP correction results for a specific wavelength bin. 
+      Each dictionary has the same structure as the output of compute_gp_correction, but with an additional "label" key indicating the wavelength range of the bin.
     """
 
     if flux_2d.shape[0] == len(time):
@@ -111,6 +153,15 @@ import h5py
 
 
 def get_corrected_pixel_data(h5_path, binned_results):
+    '''
+    Maps the GP correction factors from the binned analysis back to the original pixel-level data.
+    Inputs:
+    - h5_path: str, path to the original H5 file (to read wavelengths and original flux/error)
+    - binned_results: list of dicts, each containing the GP correction results for a specific wavelength bin (output of run_binned_analysis)
+
+    Outputs:
+    - pixel_results: dict, mapping each wavelength bin to its corrected pixel-level data.
+    '''
     pixel_results = {}
 
     with h5py.File(h5_path, "r") as hf:
