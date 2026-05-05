@@ -7,23 +7,28 @@ import corner
 from scipy.ndimage import generic_filter
 
 def run_mcmc(time, flux, gp, bounds, n_walkers=32, n_steps=600, burn_in=200):
-    '''
+    """
     Run MCMC sampling for the GP model. Returns the samples, summary statistics, and the optimization result.
 
-    Inputs:
-    - time: 1D array of time points
-    - flux: 1D array of flux values (normalized)
-    - gp: george.GP object already fitted to the data
-    - bounds: list of tuples, each tuple is (min, max) for a parameter
-    - n_walkers: int, number of MCMC walkers
-    - n_steps: int, total number of MCMC steps
-    - burn_in: int, number of steps to discard as burn-in   
-
-    Outputs:
-    - samples: 2D array of MCMC samples (n_samples x n_params)  
-    - mcmc_results: 2D array of percentiles (16th, 50th, 84th) for each parameter
-    - res: Optimization result from the initial MLE step (scipy OptimizeResult object)
-    '''
+    :param time: 1D array of time points
+    :type time: np.ndarray
+    :param flux: 1D array of flux values (normalized)
+    :type flux: np.ndarray
+    :param gp: george.GP object already fitted to the data
+    :param bounds: list of tuples, each tuple is (min, max) for a parameter
+    :type bounds: list of tuple
+    :param n_walkers: number of MCMC walkers (default: 32)
+    :type n_walkers: int
+    :param n_steps: total number of MCMC steps (default: 600)
+    :type n_steps: int
+    :param burn_in: number of steps to discard as burn-in (default: 200)
+    :type burn_in: int
+    :return: tuple containing:
+        - samples (np.ndarray): 2D array of MCMC samples (n_samples x n_params)
+        - mcmc_results (np.ndarray): 2D array of percentiles (16th, 50th, 84th) for each parameter
+        - res (scipy.optimize.OptimizeResult): Optimization result from the initial MLE step
+    :rtype: tuple
+    """
     def neg_ln_like(p):
         gp.set_parameter_vector(p)
         return -gp.log_likelihood(flux, quiet=True)
@@ -51,28 +56,32 @@ def run_mcmc(time, flux, gp, bounds, n_walkers=32, n_steps=600, burn_in=200):
     return samples, mcmc_results, res
 
 def get_best_params(gp, time, flux, samples, mcmc_results, k_fast, k_slow):
-    '''
-    
+    """
+    Extract best-fit parameters and compute GP predictions for plotting and residual analysis.
+
     After MCMC, we want to extract the best-fit parameters and compute the GP predictions for plotting and residual analysis.
 
-    Inputs:
-    - gp: george.GP object (should be set to the median MCMC parameters before calling this function)
-    - time: 1D array of time points
-    - flux: 1D array of flux values (normalized)
-    - samples: 2D array of MCMC samples (n_samples x n_params)
-    - mcmc_results: 2D array of percentiles (16th, 50th, 84th) for each parameter
-    - k_fast: The "fast" kernel component
-    - k_slow: The "slow" kernel component   
-    
-    Outputs:
-    - x_pred: 1D array of time points for smooth plotting (1000 points)
-    - mu: 1D array of GP predictions at x_pred (median parameters)
-    - gp_std: 1D array of GP standard deviation at x_pred (median parameters)
-    - mu_f: 1D array of the "fast" component of the GP at x_pred
-    - mu_s: 1D array of the "slow" component of the GP at x_pred
-    - residuals: 1D array of (flux - GP prediction) at the original time points
-    - mcmc_mu_samples: list of 1D arrays, each being the GP prediction at x_pred for a random sample from the MCMC chain (used for "spaghetti" plots) 
-    '''
+    :param gp: george.GP object (should be set to the median MCMC parameters before calling this function)
+    :param time: 1D array of time points
+    :type time: np.ndarray
+    :param flux: 1D array of flux values (normalized)
+    :type flux: np.ndarray
+    :param samples: 2D array of MCMC samples (n_samples x n_params)
+    :type samples: np.ndarray
+    :param mcmc_results: 2D array of percentiles (16th, 50th, 84th) for each parameter
+    :type mcmc_results: np.ndarray
+    :param k_fast: The "fast" kernel component
+    :param k_slow: The "slow" kernel component
+    :return: tuple containing:
+        - x_pred (np.ndarray): 1D array of time points for smooth plotting (1000 points)
+        - mu (np.ndarray): 1D array of GP predictions at x_pred (median parameters)
+        - gp_std (np.ndarray): 1D array of GP standard deviation at x_pred (median parameters)
+        - mu_f (np.ndarray): 1D array of the "fast" component of the GP at x_pred
+        - mu_s (np.ndarray): 1D array of the "slow" component of the GP at x_pred
+        - residuals (np.ndarray): 1D array of (flux - GP prediction) at the original time points
+        - mcmc_mu_samples (list): list of 1D arrays, each being the GP prediction at x_pred for a random sample from the MCMC chain (used for "spaghetti" plots)
+    :rtype: tuple
+    """
     # Set GP to the Median (50th percentile)
     gp.set_parameter_vector(mcmc_results[1])
     x_pred = np.linspace(time.min(), time.max(), 1000)

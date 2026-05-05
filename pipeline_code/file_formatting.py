@@ -7,38 +7,40 @@ from .kernels import get_kernel
 from .modeling import run_mcmc, get_best_params
 import h5py
 from scipy.ndimage import generic_filter
+
 def load_h5_data(file_path):
-     '''
-     Loads the necessary datasets from the H5 file and returns them as numpy arrays.
+    """
+    Loads the necessary datasets from the H5 file and returns them as numpy arrays.
 
-     Inputs:
-     - file_path: str, path to the H5 file
-
-     Outputs:    
-     - wave: 1D numpy array of wavelengths
-     - time_raw: 1D numpy array of time in MJD
-     - flux_raw: 2D numpy array of flux (time x wavelength)
-     - err_raw: 2D numpy array of errors (time x wavelength)
-     '''
-     with h5py.File(file_path, 'r') as h5:
+    :param file_path: Path to the H5 file
+    :type file_path: str
+    :return: Tuple containing:
+        - wave (np.ndarray): 1D array of wavelengths
+        - time_raw (np.ndarray): 1D array of time in MJD
+        - flux_raw (np.ndarray): 2D array of flux (time x wavelength)
+        - err_raw (np.ndarray): 2D array of errors (time x wavelength)
+    :rtype: tuple
+    """
+    with h5py.File(file_path, 'r') as h5:
         wave = h5['wave_1d'][:]
         time_raw = h5['time'][:]
         flux_raw = h5['calibrated_optspec'][:]
         err_raw = h5['calibrated_errspec'][:]
-     return wave, time_raw, flux_raw, err_raw
+    return wave, time_raw, flux_raw, err_raw
 
 def save_corr_data(original_h5, pixel_data, output_path):
     """
     Clones the original H5 and adds 'flux_2d_gp_corrected' and 
     'err_2d_gp_corrected' as new datasets.
 
-    Inputs:
-    - original_h5: str, path to the original H5 file
-    - pixel_data: dict, keys are wavelength bin labels, values are dicts with 'fluxes_corr_jy' and 'errors_corr_jy'
-    - output_path: str, path to save the new H5 file with corrections   
-
-    Outputs:
-    - None (saves the file to disk)
+    :param original_h5: Path to the original H5 file
+    :type original_h5: str
+    :param pixel_data: Dictionary where keys are wavelength bin labels and values are dicts with 'fluxes_corr_jy' and 'errors_corr_jy'
+    :type pixel_data: dict
+    :param output_path: Path to save the new H5 file with corrections
+    :type output_path: str
+    :return: None (saves the file to disk)
+    :rtype: None
     """
     import shutil
     from datetime import datetime
@@ -74,7 +76,6 @@ def save_corr_data(original_h5, pixel_data, output_path):
         hf.create_dataset('err_2d_gp_corrected', data=corrected_err, dtype='float64')
 
         # Deleting some old data (Not needed in the package but won't cause it to crash)
-
         if 'flux_div_norm' in hf:
             del hf['flux_div_norm']
 

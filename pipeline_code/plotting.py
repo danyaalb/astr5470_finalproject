@@ -22,28 +22,41 @@ import os
 from .kernels import get_kernel
 from .modeling import run_mcmc, get_best_params
 from .file_formatting import load_h5_data, save_corr_data
+
 def plot_results(time, flux, error, x_pred, mu_total, gp_std, mu_f, mu_s, residuals, samples, mcmc_results, mcmc_mu_samples, date, output_dir="./outputs"):
     """
     Main plotting function that saves high-res diagnostics to the output folder.
 
-    Inputs:
-    - time: 1D array of time points
-    - flux: 1D array of flux values (normalized)
-    - error: 1D array of flux uncertainties (normalized)
-    - x_pred: 1D array of time points for GP predictions (same as time or a smooth grid)
-    - mu_total: 1D array of total GP prediction at x_pred (median parameters)
-    - gp_std: 1D array of GP standard deviation at x_pred (median parameters)
-    - mu_f: 1D array of the "fast" component of the GP at   x_pred
-    - mu_s: 1D array of the "slow" component of the GP at x_pred
-    - residuals: 1D array of (flux - GP prediction) at the original time points
-    - samples: 2D array of MCMC samples (n_samples x n_params)
-    - mcmc_results: 2D array of percentiles (16th, 50th, 84th) for each parameter
-    - mcmc_mu_samples: 2D array of GP predictions at x_pred for each MCMC sample (n_samples x len(x_pred))
-    - date: str, visit date for labeling the plot
-    - output_dir: str, directory to save the plots
-
-    Outputs:
-    - Saves a diagnostic plot to the specified output directory.
+    :param time: 1D array of time points
+    :type time: np.ndarray
+    :param flux: 1D array of flux values (normalized)
+    :type flux: np.ndarray
+    :param error: 1D array of flux uncertainties (normalized)
+    :type error: np.ndarray
+    :param x_pred: 1D array of time points for GP predictions (same as time or a smooth grid)
+    :type x_pred: np.ndarray
+    :param mu_total: 1D array of total GP prediction at x_pred (median parameters)
+    :type mu_total: np.ndarray
+    :param gp_std: 1D array of GP standard deviation at x_pred (median parameters)
+    :type gp_std: np.ndarray
+    :param mu_f: 1D array of the "fast" component of the GP at x_pred
+    :type mu_f: np.ndarray
+    :param mu_s: 1D array of the "slow" component of the GP at x_pred
+    :type mu_s: np.ndarray
+    :param residuals: 1D array of (flux - GP prediction) at the original time points
+    :type residuals: np.ndarray
+    :param samples: 2D array of MCMC samples (n_samples x n_params)
+    :type samples: np.ndarray
+    :param mcmc_results: 2D array of percentiles (16th, 50th, 84th) for each parameter
+    :type mcmc_results: np.ndarray
+    :param mcmc_mu_samples: List of 1D arrays, each being GP prediction at x_pred for a random MCMC sample
+    :type mcmc_mu_samples: list of np.ndarray
+    :param date: Visit date for labeling the plot
+    :type date: str
+    :param output_dir: Directory to save the plots (default: "./outputs")
+    :type output_dir: str
+    :return: None (saves diagnostic plots to disk)
+    :rtype: None
     """
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10), sharex=True, 
                                    gridspec_kw={'height_ratios': [3, 1]})
@@ -85,16 +98,16 @@ def plot_results(time, flux, error, x_pred, mu_total, gp_std, mu_f, mu_s, residu
 
 def plot_binned_results(binned_results, visit_date, output_dir="./outputs"):
     """
-    Diagnostic plot showing Raw vs GP-Corrected data, Scatter Reduction,
-    and Periodogram Analysis.
+    Diagnostic plot showing Raw vs GP-Corrected data, Scatter Reduction, and Periodogram Analysis.
 
-    Inputs:
-    - binned_results: list of dicts, each containing the GP correction results for a specific wavelength bin (output of run_binned_analysis)
-    - visit_date: str, visit date for labeling the plot
-    - output_dir: str, directory to save the plots  
-
-    Outputs:
-    - Saves a diagnostic plot for each wavelength bin to the specified output directory.
+    :param binned_results: List of dicts, each containing GP correction results for a specific wavelength bin (output of run_binned_analysis)
+    :type binned_results: list of dict
+    :param visit_date: Visit date for labeling the plot
+    :type visit_date: str
+    :param output_dir: Directory to save the plots (default: "./outputs")
+    :type output_dir: str
+    :return: None (saves diagnostic plots to disk for each wavelength bin)
+    :rtype: None
     """
     for res in binned_results:
         # Extract data from your compute_gp_correction dictionary
