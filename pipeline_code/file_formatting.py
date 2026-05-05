@@ -3,8 +3,8 @@ import numpy as np
 import shutil
 from datetime import datetime
 import numpy as np
-from kernels import get_kernel
-from modeling import run_mcmc, get_best_params
+from .kernels import get_kernel
+from .modeling import run_mcmc, get_best_params
 import h5py
 from scipy.ndimage import generic_filter
 def load_h5_data(file_path):

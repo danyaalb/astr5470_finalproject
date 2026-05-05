@@ -1,7 +1,7 @@
 import numpy as np
-from kernels import get_kernel
-from modeling import run_mcmc, get_best_params
-from file_formatting import load_h5_data, save_corr_data
+from .kernels import get_kernel
+from .modeling import run_mcmc, get_best_params
+from .file_formatting import load_h5_data, save_corr_data
 import h5py
 import george
 from george import kernels

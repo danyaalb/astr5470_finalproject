@@ -10,6 +10,8 @@ from scipy.ndimage import generic_filter
 import numpy as np
 from scipy import stats
 
+import os
+
 def plot_correction_diagnostics(v, binned_results, pixel_data):
     """
     v: The object containing raw data (v.wave_1d, v.flux_2d, etc.)
@@ -116,70 +118,48 @@ def plot_multiplication_factors(binned_results):
     plt.tight_layout()
     plt.show()
 
-    
-# --- UPDATED 4. PLOTTING (COMBINED VIEW) ---
-def plot_results(t, y, err, x_pred, mu, gp_std, mu_f, mu_s, residuals, samples, mcmc_results, mcmc_samples, date):
-    y_mean = np.mean(y)
-    p_f = np.exp(mcmc_results[1, 2]) * 60
-    p_s = np.exp(mcmc_results[1, 5])
-    
-    # Stats: Reduced Chi-Squared
-    dof = len(y) - len(mcmc_results[1])
-    chi2_red = np.sum((residuals / err)**2) / dof
-    
-    fig = plt.figure(figsize=(10, 8))
-    gs = plt.GridSpec(2, 2, figure=fig)
-    
-    # --- COMBINED MAIN PLOT ---
-    ax1 = fig.add_subplot(gs[0:1, :]) # Takes up top two rows
-    
-    # 1. Raw Data
-    ax1.errorbar(t, y, yerr=err, fmt=".k", alpha=1.0, label="Data")
-    
-    # 2. MCMC Parameter Uncertainty (The "Spaghetti" lines)
-    for m_sample in mcmc_samples:
-        ax1.plot(x_pred, m_sample, color="green", alpha=0.2, lw=0.5)
-    
-    # 3. GP Uncertainty (The Shaded Region)
-    ax1.fill_between(x_pred, mu - gp_std, mu + gp_std, color="black", alpha=0.15, label="GP Uncertainty")
-    
-    # 4. Total Best Fit
-    ax1.plot(x_pred, mu, "green", lw=1, label="Full GP Model (Median)")
-    
-    # 5. Decomposed Components (Overlayed)
-    # Centered at mean for visualization
-    ax1.plot(x_pred, mu_f-1 + y_mean, "red", lw=1, alpha=0.8, label=f"Fast Pulsation ({p_f:.2f}m)")
-    ax1.plot(x_pred, mu_s-1 + y_mean, "blue", lw=1.5, ls="--", alpha=0.8, label=f"Slow Trend ({p_s:.2f}h)")
-    
-    ax1.set_title(f"Combined GP Analysis: {date} | $\chi^2_\\nu$: {chi2_red:.3f}")
-    ax1.set_ylabel("Normalized Flux")
-    ax1.legend(loc="lower right", ncol=2)
 
-    # --- RESIDUAL PLOTS ---
-    ax2 = fig.add_subplot(gs[1, 0])
-    std_res = residuals / err
-    ax2.hist(std_res, bins=25, density=True, color='skyblue', alpha=0.7)
-    x_g = np.linspace(-4, 4, 100)
-    ax2.plot(x_g, stats.norm.pdf(x_g, 0, 1), 'r--', label='Ideal CLT')
-    ax2.set_title("Standardized Residuals (CLT Check)")
+def plot_results(time, flux, error, x_pred, mu_total, gp_std, mu_f, mu_s, residuals, samples, mcmc_results, mcmc_mu_samples, date, output_dir="./outputs"):
+    """
+    Main plotting function that saves high-res diagnostics to the output folder.
+    """
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10), sharex=True, 
+                                   gridspec_kw={'height_ratios': [3, 1]})
+    
+    # --- Top Panel: Data + GP Model ---
+    ax1.errorbar(time, flux, yerr=error, fmt='.', color='gray', alpha=0.3, label='Raw Data')
+    
+    # Plot the "Spaghetti" (MCMC Uncertainty)
+    for s_mu in mcmc_mu_samples[:50]: # Cap at 50 for speed
+        ax1.plot(x_pred, s_mu, color='green', alpha=0.05, lw=0.5)
+        
+    ax1.plot(x_pred, mu_total, color='black', lw=2, label='Total GP Model')
+    ax1.plot(x_pred, mu_s, 'b--', alpha=0.8, label='Slow Trend (Systematics)')
+    ax1.plot(x_pred, mu_f, 'r:', alpha=0.8, label='Fast Jitter')
+    
+    ax1.set_ylabel("Relative Flux")
+    ax1.legend(loc='best', ncol=2)
+    # Using 'r' for raw string to avoid SyntaxWarnings with \chi
+    ax1.set_title(rf"PSO318 Jitter Correction - Visit: {date}")
 
-    ax3 = fig.add_subplot(gs[1, 1])
-    ax3.scatter(t, residuals, marker='.', color='black', alpha=0.3)
-    ax3.axhline(0, color='red', linestyle='--')
-    ax3.set_title("Residuals vs. Time")
+    # --- Bottom Panel: Residuals ---
+    ax2.scatter(time, residuals, color='purple', s=8, alpha=0.5)
+    ax2.axhline(0, color='black', linestyle='--')
+    ax2.set_ylabel("Residuals")
+    ax2.set_xlabel("Time (Hours)")
 
     plt.tight_layout()
-    plt.show()
 
-    # E. Table and Corner
-    print(f"\n--- {date} FINAL SUMMARY ---")
-    print(f"Fast Period: {p_f:.4f} min")
-    print(f"Slow Period: {p_s:.4f} hours")
-    print(f"Chi-Squared Red: {chi2_red:.4f} {'(Taller histogram = Overestimated Errors)' if chi2_red < 1 else ''}")
+    # --- SAVE LOGIC ---
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+        
+    plt.savefig(os.path.join(output_dir, f"Diagnostic_{date}.png"), dpi=300)
+    plt.savefig(os.path.join(output_dir, f"Diagnostic_{date}.pdf"))
     
-    corner.corner(samples, labels=["Amp1", "Gam1", "P_fast", "Amp2", "Gam2", "P_slow"], truths=mcmc_results[1])
-    plt.show()
-
+    print(f"✅ Plots saved to: {output_dir}/Diagnostic_{date}.png and .pdf")
+    plt.show() # Shows it on screen while running
+    plt.close(fig)
 def show_corner_plot(samples, mcmc_results):
     corner.corner(samples, labels=["Amp1", "Gam1", "P_fast", "Amp2", "Gam2", "P_slow"], truths=mcmc_results[1])
     plt.show()
@@ -291,45 +271,91 @@ def plot_visit_results(bin_res, mcmc_results, chains, date, mcmc_samples=None):
     print(f"\n--- {date} SUMMARY ---")
     print(f"Fast Period: {p_f:.4f} min | Slow Period: {p_s:.4f} hours")
     print(f"Red Chi2: {chi2_red:.4f}")
-# def plot_visit_results(bin_res, mcmc_results, chains, date, mcmc_samples=None):
-#     # 1. Extract necessary data from bin_res dictionary
-#     t = bin_res['time_hr']
-#     y = bin_res['y_raw']
-#     t_smooth = bin_res['t_smooth']
-#     mu_s_fine = bin_res['mu_slow_fine']
-    
-#     # 2. Setup Figure and Axes first to avoid UnboundLocalError
-#     fig = plt.figure(figsize=(12, 10))
-#     gs = plt.GridSpec(3, 2, figure=fig)
-    
-#     # Explicitly define axes
-#     ax1 = fig.add_subplot(gs[0:2, :]) 
-#     ax2 = fig.add_subplot(gs[2, 0])
-#     ax3 = fig.add_subplot(gs[2, 1])
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+from scipy import signal
+import os
 
-#     # --- TOP PLOT (ax1) ---
-#     # Use the absolute residuals as the "distance-based" error bar
-#     residuals = bin_res['residuals_sub']
-#     ax1.errorbar(t, y, yerr=np.abs(residuals), fmt=".k", alpha=0.4, label="Data")
-    
-#     # Spaghetti lines: Must use t_smooth to match the 1000-point dimension
-#     if mcmc_samples is not None:
-#         for m_sample in mcmc_samples:
-#             if len(m_sample) == len(t_smooth):
-#                 ax1.plot(t_smooth, m_sample, color="green", alpha=0.1, lw=0.5)
+import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+from scipy import signal
+import os
 
-#     ax1.plot(t_smooth, mu_s_fine, "blue", lw=2, ls="--", label="Slow Trend")
-#     ax1.set_title(f"Visit Analysis: {date}")
-#     ax1.legend()
+def plot_binned_results(binned_results, visit_date, output_dir="./outputs"):
+    """
+    Diagnostic plot showing Raw vs GP-Corrected data, Scatter Reduction,
+    and Periodogram Analysis.
+    """
+    for res in binned_results:
+        # Extract data from your compute_gp_correction dictionary
+        t = res['time_hr']
+        t_smooth = res['t_smooth']
+        y_raw = res['flux_raw']
+        y_corr = res['flux_corr']
+        mu_slow_fine = res['mu_slow_smooth']
+        mu_fast_fine = res['mu_fast_smooth']
+        
+        # Calculate Scatter (RMS)
+        # We compare raw data against the slow trend vs corrected data against 1.0
+        res_raw = y_raw - res['mu_slow'] 
+        res_corr = y_corr - res['mu_slow'] 
+        
+        rms_raw = np.nanstd(res_raw)
+        rms_corr = np.nanstd(res_corr)
+        improvement = (1 - (rms_corr / rms_raw)) * 100
 
-#     # --- RESIDUAL PLOTS (ax2, ax3) ---
-#     std_res = residuals / bin_res['y_sub_err']
-#     ax2.hist(std_res, bins=20, density=True, color='skyblue', alpha=0.7)
-#     ax2.set_title("Standardized Residuals")
+        print(f"\n--- Statistics for Bin {res['label']} ---")
+        print(f"Old Scatter (RMS): {rms_raw:.6f}")
+        print(f"New Scatter (RMS): {rms_corr:.6f}")
+        print(f"Scatter Reduction: {improvement:.2f}%")
 
-#     ax3.scatter(t, residuals, marker='.', color='black', alpha=0.4)
-#     ax3.axhline(0, color='red', linestyle='--')
-#     ax3.set_title("Residuals vs. Time")
+        # --- Create Figure ---
+        fig = plt.figure(figsize=(8, 10))
+        gs = plt.GridSpec(3, 1, height_ratios=[2, 0.6, 1.2])
 
-#     plt.tight_layout()
-#     plt.show()
+        # 1. LIGHT CURVE COMPARISON
+        ax1 = fig.add_subplot(gs[0])
+        ax1.plot(t, y_raw, 'o', color='gray', alpha=0.2, label="Old Light Curve (Raw)")
+        ax1.plot(t, y_corr, 'o', color='red', markersize=4, label="Corrected Points")
+        ax1.plot(t_smooth, mu_slow_fine, color='blue', lw=2, label="GP Slow Trend")
+        
+        ax1.set_title(f"{visit_date} | Bin: {res['label']} | Improv: {improvement:.1f}%", fontsize=12, fontweight='bold')
+        ax1.set_ylabel("Normalized Flux")
+        ax1.legend(loc='lower right', fontsize=8, ncol=2)
+
+        # 2. RESIDUALS & HISTOGRAM
+        ax2 = fig.add_subplot(gs[1], sharex=ax1)
+        ax2.scatter(t, res_raw, color='gray', s=15, alpha=0.3, label="Old Resids")
+        ax2.scatter(t, res_corr, color='red', s=20, marker='+', alpha=0.8, label="New Resids")
+        ax2.axhline(0, color='black', ls='--', alpha=0.5)
+        ax2.set_ylabel("Residuals")
+        
+        ax_h = inset_axes(ax2, width="20%", height="100%", loc='lower right', bbox_to_anchor=(0.05, 0, 1, 1), bbox_transform=ax2.transAxes)
+        ax_h.hist(res_raw, bins=15, orientation='horizontal', color='gray', alpha=0.2, density=True)
+        ax_h.hist(res_corr, bins=15, orientation='horizontal', color='red', alpha=0.4, density=True)
+        ax_h.set_axis_off()
+
+        # 3. LOMB-SCARGLE (The Period Proof)
+        ax3 = fig.add_subplot(gs[2])
+        periods_min = np.linspace(2, 150, 2000)
+        ang_freqs = 2 * np.pi / (periods_min / 60.0)
+        
+        p_raw = signal.lombscargle(np.ascontiguousarray(t), np.ascontiguousarray(res_raw), ang_freqs)
+        p_corr = signal.lombscargle(np.ascontiguousarray(t), np.ascontiguousarray(res_corr), ang_freqs)
+        
+        ax3.plot(periods_min, p_raw, color='gray', alpha=0.4, label="Raw Power")
+        ax3.plot(periods_min, p_corr, color='red', lw=1.5, label="Corrected Power")
+        ax3.axvline(13.0, color='blue', ls=':', alpha=0.6, label="13m Jitter")
+        
+        ax3.set_xlabel("Period [minutes]")
+        ax3.set_ylabel("Power")
+        ax3.set_xlim(2, 150)
+        ax3.legend(loc='upper right', fontsize=8)
+
+        plt.tight_layout()
+        
+        # SAVE
+        save_base = f"Binned_Summary_{visit_date}_{res['label'].replace('.', 'p')}"
+        plt.savefig(os.path.join(output_dir, f"{save_base}.png"), dpi=300)
+        plt.savefig(os.path.join(output_dir, f"{save_base}.pdf"))
+        plt.close(fig)
