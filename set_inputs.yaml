@@ -1,0 +1,39 @@
+# General Metadata
+object_name: "PSO318"
+instrument: "G235H"
+global_min_mjd: 60946.20751749454
+output_directory: "./outputs"
+generate_plots: true
+
+gp_settings:
+  fast_scale: 0.2
+  slow_scale: 8.0
+
+visits:
+  - date: "2025-10-01"
+    path: "/Users/cfy7qw/Documents/uva_research/Parallel_pipeline/DataAnalysis/JWST/PSO318/PSO318_Eureka/G235H/2025-10-01/2025-10-01_combined_SpecData.h5"
+  - date: "2025-10-21"
+    path: "/Users/cfy7qw/Documents/uva_research/Parallel_pipeline/DataAnalysis/JWST/PSO318/PSO318_Eureka/G235H/2025-10-21/2025-10-21_combined_SpecData.h5"
+  - date: "2025-11-06"
+    path: "/Users/cfy7qw/Documents/uva_research/Parallel_pipeline/DataAnalysis/JWST/PSO318/PSO318_Eureka/G235H/2025-11-06/2025-11-06_combined_SpecData.h5"
+
+# MCMC Parameters
+mcmc_bounds:
+  - [-100.0, 100.0]  # Fast ln_amp
+  - [0.01, 10.0]     # Fast gamma
+  - [-2.3, -0.9]     # Fast log_period
+  - [-100.0, 100.0]  # Slow ln_amp
+  - [0.01, 5.0]      # Slow gamma
+  - [1.5, 3.0]       # Slow log_period
+
+mcmc_controls:
+  n_walkers: 32
+  n_steps: 1000
+
+mcmc_bounds:
+  - [null, null]     # Fast amp
+  - [0.1, 10.0]      # Fast scale
+  - [-2.3, -0.9]     # Fast log-sigma (example values)
+  - [null, null]     # Slow amp
+  - [0.1, 5.0]       # Slow scale
+  - [1.3, 2.5]       # Slow log-sigma
