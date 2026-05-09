@@ -18,7 +18,11 @@ def main():
     # 2. Load the data using the direct paths
     # We use the manager function to calculate the global MJD min 
     # and return a list of prepared JWSTVisit objects
-    visits = load_all_visits(config)
+    visits = []
+
+    for file_path in config["input_files"]:
+        visit = JWSTVisit(file_path)
+        visits.append(visit)
 
 
     print("Loading data and calculating global time references...")
@@ -26,7 +30,7 @@ def main():
     # --- 3. Execution Loop ---
     for v in visits:
         print(f"\n{'='*30}")
-        print(f"Processing Visit: {v.date}")
+        print(f"Processing Visit: {v.name}")
         print(f"{'='*30}")
         
         # A. Setup GP Kernels
@@ -76,7 +80,7 @@ def main():
         # E. Correct Jitter and Save
         pixel_data = correction.get_corrected_pixel_data(v.h5_path, binned_results)
         
-        output_filename = f"{v.date}_GP_corrected.h5"
+        output_filename = f"{v.name}_GP_corrected.h5"
         final_output_path = os.path.join(config['output_directory'], output_filename)
         
         file_formatting.save_corr_data(v.h5_path, pixel_data, final_output_path)
@@ -97,14 +101,14 @@ def main():
                 samples, 
                 mcmc_results, 
                 mcmc_mu_samples, 
-                v.date,                # Argument 13
+                v.name,             
                 config['output_directory'] # Pass the directory for saving!
             )
         # G. Binned Diagnostics 
         if config.get('generate_plots', True):
             plotting.plot_binned_results(
                 binned_results, 
-                v.date, 
+                v.name, 
                 config['output_directory']
             )
 

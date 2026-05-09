@@ -1,7 +1,7 @@
 import numpy as np
 import h5py
 from scipy.ndimage import median_filter
-
+import os
 class JWSTVisit:
     """
     A class to handle JWST NIRSpec BOTS data for a single observation epoch.
@@ -12,53 +12,42 @@ class JWSTVisit:
         white_flux (array): Normalized white light curve flux.
         white_error (array): Empirical noise estimate for the light curve.
     """
-    
-    def __init__(self, date, h5_path, global_mjd_min):
-        """
-        Initializes the visit, loads data, and performs normalization.
-        
-        Args:
-            date (str): The date string for the visit.
-            h5_path (str): Full path to the Eureka! Stage 3 .h5 file.
-            global_mjd_min (float): The earliest MJD across all visits to 
-                                    set the 'zero' point for time in hours.
-        """
-        self.date = date
+    def __init__(self, h5_path):
         self.h5_path = h5_path
-
-        # 1. Load Data
         with h5py.File(h5_path, 'r') as hf:
             wave_raw = hf['wave_1d'][:]
-            time_raw = hf['time'][:] # MJD
+            time_raw = hf['time'][:]
             flux_2d_raw = hf['calibrated_optspec'][:]
             err_2d_raw = hf['calibrated_opterr'][:]
-            
-        # 2. Sort by time (ensures GP and MCMC run correctly)
+
+        # Sort by time
         sort_idx = np.argsort(time_raw)
         time_raw = time_raw[sort_idx]
         flux_2d_raw = flux_2d_raw[sort_idx, :]
         err_2d_raw = err_2d_raw[sort_idx, :]
 
-        # 3. Generate White Light Curve
+        # White light curve
         w_flux_raw = np.nansum(flux_2d_raw, axis=1)
         w_err_raw = np.sqrt(np.nansum(err_2d_raw**2, axis=1))
-        
-        # 4. Create Masking
+
+        # Mask
         self.time_mask = np.isfinite(w_flux_raw) & (w_flux_raw > 0)
-        
-        # 5. Unit Conversion & Normalization
-        # Here we use the 'passed in' global_mjd_min instead of a global variable
-        self.time = (time_raw[self.time_mask] - global_mjd_min) * 24.0
-        
+
+        # Use relative hours
+        self.time = (time_raw[self.time_mask] - np.nanmin(time_raw)) * 24.0
+
+        # Normalize
         norm_val = np.nanmedian(w_flux_raw[self.time_mask])
-        
+
         self.wave_1d = wave_raw
         self.white_flux = w_flux_raw[self.time_mask] / norm_val
-        self.eureka_error = w_err_raw[self.time_mask] / norm_val
+        self.white_error = w_err_raw[self.time_mask] / norm_val
         self.flux_2d = flux_2d_raw[self.time_mask, :]
         self.err_2d = err_2d_raw[self.time_mask, :]
 
-        # 6. Empirical Noise Calculation
+        # Optional auto-name from filename
+        self.name = os.path.basename(h5_path).replace(".h5", "")
+
         self._calculate_empirical_noise()
 
     def _calculate_empirical_noise(self):
@@ -69,7 +58,7 @@ class JWSTVisit:
         self.white_error = np.full_like(self.white_flux, scatter)
 
     def __repr__(self):
-        return f"JWSTVisit(Date={self.date}, Points={len(self.time)})"
+        return f"JWSTVisit(Date={self.name}, Points={len(self.time)})"
 
 
 def load_all_visits(config):
