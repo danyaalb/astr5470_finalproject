@@ -10,8 +10,8 @@ gp_settings:
   slow_scale: 8.0
 
 input_files:
-  - "/Users/cfy7qw/Documents/uva_research/Parallel_pipeline/DataAnalysis/JWST/PSO318/PSO318_Eureka/G235H/2025-10-01/2025-10-01_combined_SpecData.h5"
-  - "/Users/cfy7qw/Documents/uva_research/Parallel_pipeline/DataAnalysis/JWST/PSO318/PSO318_Eureka/G235H/2025-10-21/2025-10-21_combined_SpecData.h5"
+  - "/Users/cfy7qw/Documents/uva_research/Parallel_pipeline/DataAnalysis/JWST/PSO318/PSO318_Eureka/G235H/2025-10-01/2025-10-01_combined_SpecData_modified.h5"
+  - "/Users/cfy7qw/Documents/uva_research/Parallel_pipeline/DataAnalysis/JWST/PSO318/PSO318_Eureka/G235H/2025-10-21/2025-10-21_combined_SpecData_modified.h5"
 # MCMC Parameters
 mcmc_bounds:
   - [-100.0, 100.0]  # Fast ln_amp
